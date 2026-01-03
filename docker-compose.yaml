@@ -1,0 +1,84 @@
+pversion: '3.8'
+
+services:
+
+  # --------------------
+  # POSTGRES DATABASE
+  # --------------------
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    networks:
+      - micro-net
+
+  # --------------------
+  # CONFIG SERVER
+  # --------------------
+  config:
+    build: ./config
+    container_name: config
+    ports:
+      - "8888:8888"
+    networks:
+      - micro-net
+
+  # --------------------
+  # DISCOVERY SERVER
+  # --------------------
+  discovery:
+    build: ./discovery
+    container_name: discovery
+    ports:
+      - "8761:8761"
+    depends_on:
+      - config
+    networks:
+      - micro-net
+
+  # --------------------
+  # DEPARTMENT SERVICE
+  # --------------------
+  department-service:
+    build: ./department-service
+    container_name: department-service
+    depends_on:
+      - discovery
+      - postgres
+    networks:
+      - micro-net
+
+  # --------------------
+  # EMPLOYEE SERVICE
+  # --------------------
+  employee-service:
+    build: ./employee-service
+    container_name: employee-service
+    depends_on:
+      - discovery
+      - postgres
+    networks:
+      - micro-net
+
+  # --------------------
+  # API GATEWAY
+  # --------------------
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - employee-service
+      - department-service
+    networks:
+      - micro-net
+
+networks:
+  micro-net:
+    driver: bridge
+

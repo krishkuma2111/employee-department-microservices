@@ -1,0 +1,10 @@
+server:
+  port: 8081
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: employee
+          uri: lb://EMPLOYEE-SERVICE
+          predicates:
+            - Path=/employees/**
