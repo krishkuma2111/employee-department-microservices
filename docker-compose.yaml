@@ -1,4 +1,4 @@
-pversion: '3.8'
+version: "3.8"
 
 services:
 
@@ -11,8 +11,16 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+      POSTGRES_DB: mydb
     ports:
       - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - micro-net
 
@@ -24,11 +32,13 @@ services:
     container_name: config
     ports:
       - "8888:8888"
+    volumes:
+      - ./config-repo:/config-repo
     networks:
       - micro-net
 
   # --------------------
-  # DISCOVERY SERVER
+  # DISCOVERY SERVER (EUREKA)
   # --------------------
   discovery:
     build: ./discovery
@@ -36,45 +46,56 @@ services:
     ports:
       - "8761:8761"
     depends_on:
-      - config
+      config:
+        condition: service_started
     networks:
       - micro-net
 
   # --------------------
   # DEPARTMENT SERVICE
   # --------------------
-  department-service:
-    build: ./department-service
-    container_name: department-service
+  department:
+    build: ./department
+    container_name: department
+    ports:
+    - "8083:8083"
     depends_on:
-      - discovery
-      - postgres
+      postgres:
+        condition: service_healthy
+      discovery:
+        condition: service_started
     networks:
       - micro-net
 
   # --------------------
   # EMPLOYEE SERVICE
   # --------------------
-  employee-service:
-    build: ./employee-service
-    container_name: employee-service
+  employee:
+    build: ./employee
+    container_name: employee
+    ports:
+    - "8082:8082"
     depends_on:
-      - discovery
-      - postgres
+      postgres:
+        condition: service_healthy
+      discovery:
+        condition: service_started
     networks:
       - micro-net
 
   # --------------------
   # API GATEWAY
   # --------------------
-  api-gateway:
-    build: ./api-gateway
-    container_name: api-gateway
+  gateway:
+    build: ./gateway
+    container_name: gateway
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
-      - employee-service
-      - department-service
+      employee:
+        condition: service_started
+      department:
+        condition: service_started
     networks:
       - micro-net
 
@@ -82,3 +103,5 @@ networks:
   micro-net:
     driver: bridge
 
+volumes:
+  postgres-data:
